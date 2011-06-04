@@ -452,7 +452,6 @@ module EventMachine
           end
         end
 
-        p "PROCCESS MSG: #{value.inspect}"
         if @subscribed and value
           case value[0]
           when "message", "pmessage"
