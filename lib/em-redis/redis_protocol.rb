@@ -345,8 +345,8 @@ module EventMachine
           err.code = code
           raise err, "Redis server returned error code: #{code}"
         end
-        @redis_subscriptions ||= {}
-        @redis_psubscriptions ||= {}
+        @redis_subscriptions = {}
+        @redis_psubscriptions = {}
 
         # These commands should be first
         auth_and_select_db

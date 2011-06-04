@@ -768,7 +768,7 @@ EM.describe EM::Protocols::Redis, "publish subscribe stuff" do
     @r.flushdb
   end
 
-  after { @r.close_connection }
+  after { @r.close_connection; @r2.close_connection }
 
   it "should be able to subscribe and get something back" do
     p = Proc.new {|msg| msg.should == "hi"; done}
