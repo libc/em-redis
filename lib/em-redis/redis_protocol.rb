@@ -483,7 +483,7 @@ module EventMachine
       def proccess_unsubscribe(value)
         type = value.shift
         channel = value.shift
-        if type = "unsubscribe"
+        if type == "unsubscribe"
           @redis_subscriptions.delete(channel)
         else
           @redis_psubscriptions.delete(channel)
