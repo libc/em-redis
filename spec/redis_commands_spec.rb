@@ -635,7 +635,7 @@ EM.describe EM::Protocols::Redis do
   end
 
   # Tests are disabled due uncatchable exceptions. We should use on_error callback,
-  # intead of raising exceptions in random places.
+  # instead of raising exceptions in random places.
   #
   # it "should raise error when invoke MONITOR" do
   #   # lambda { @r.monitor }.should.raise
