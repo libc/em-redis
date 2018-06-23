@@ -241,6 +241,18 @@ module EventMachine
         end
       end
 
+      def subscribe(channel, on_msg_callback, &blk)
+        @subscribed = true
+        @redis_subscriptions[channel] = on_msg_callback
+        call_command(['subscribe', channel], &blk)
+      end
+
+      def psubscribe(channel, on_msg_callback, &blk)
+        @subscribed = true
+        @redis_psubscriptions[channel] = on_msg_callback
+        call_command(['psubscribe', channel], &blk)
+      end
+
       def errback(&blk)
         @error_callback = blk
       end
@@ -331,6 +343,8 @@ module EventMachine
           err.code = code
           raise err, "Redis server returned error code: #{code}"
         end
+        @redis_subscriptions = {}
+        @redis_psubscriptions = {}
 
         # These commands should be first
         auth_and_select_db
@@ -436,9 +450,43 @@ module EventMachine
           end
         end
 
+        if @subscribed and value
+          case value[0]
+          when "message", "pmessage"
+            return process_message(value)
+          when "unsubscribe", "punsubscribe"
+            proccess_unsubscribe(value)
+          end
+        end
+
         processor, blk = @redis_callbacks.shift
         value = processor.call(value) if processor
         blk.call(value) if blk
+      end
+
+      def process_message(value)
+        type = value.shift
+        if type == "message"
+          channel = value.shift
+          message = value.shift
+          @redis_subscriptions[channel].call(message)
+        else
+          pattern = value.shift
+          channel = value.shift
+          message = value.shift
+          @redis_psubscriptions[pattern].call(channel, message)
+        end
+      end
+
+      def proccess_unsubscribe(value)
+        type = value.shift
+        channel = value.shift
+        if type == "unsubscribe"
+          @redis_subscriptions.delete(channel)
+        else
+          @redis_psubscriptions.delete(channel)
+        end
+        @subscribed = @redis_subscriptions.size + @redis_subscriptions.size > 0
       end
 
       def unbind

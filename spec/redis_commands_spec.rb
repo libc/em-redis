@@ -760,3 +760,77 @@ EM.describe EM::Protocols::Redis, "with nested multi-bulk response" do
     end
   end
 end
+
+EM.describe EM::Protocols::Redis, "publish subscribe stuff" do
+  before do
+    @r = EM::Protocols::Redis.connect :db => 14
+    @r2 = EM::Protocols::Redis.connect :db => 14
+    @r.flushdb
+  end
+
+  after { @r.close_connection; @r2.close_connection }
+
+  it "should be able to subscribe and get something back" do
+    p = Proc.new {|msg| msg.should == "hi"; done}
+    @r.subscribe("foo_ch", p)
+    @r2.publish("foo_ch", "hi")
+  end
+
+  it "should be able to subscribe and get something back" do
+    timeout(2)
+    @count = 0
+    p = Proc.new {|msg| @count += 1}
+    @r.subscribe("foo_test", p)
+    @r2.publish("foo_test2", "hello")
+    @r2.publish("foo_test", "hello")
+    @r2.publish("foo_test", "hello")
+    EM.add_timer(1) do
+      @count.should == 2
+      done
+    end
+  end
+
+  it "should be able to subscribe to two channels" do
+    timeout(2)
+    @count = 0
+    p = Proc.new {|msg| msg.should == "hi1"; @count += 1}
+    p2 = Proc.new {|msg| msg.should == "hi2"; @count += 1}
+    @r.subscribe("foo_test", p)
+    @r.subscribe("foo_test2", p2)
+    @r2.publish("foo_test", "hi1")
+    @r2.publish("foo_test2", "hi2")
+    @r2.publish("foo_test3", "hi3")
+    EM.add_timer(1) do
+      @count.should == 2
+      done
+    end
+  end
+
+  it "should be able to psubscribe and get something back" do
+    p = Proc.new {|ch,msg| ch.should == "foo_ch.bar" and msg.should == "hi"; done}
+    @r.psubscribe("foo_ch.*", p)
+    @r2.publish("foo_ch.bar", "hi")
+  end
+
+  it "should be able to unsubscribe" do
+    timeout(3)
+    @count = 0
+    @did_pub2 = false
+    p = Proc.new {|msg| @count += 1}
+    @r.subscribe("foo", p)
+    @r2.publish("foo", "hi1")
+    EM.add_timer(1) do
+      @r.unsubscribe("foo", p) do
+        @did_pub2 = true
+        @r2.publish("foo", "hi1")
+      end
+    end
+    EM.add_timer(2) do
+      @count.should == 1
+      @did_pub2.should == true
+      done
+    end
+  end
+
+end
+
